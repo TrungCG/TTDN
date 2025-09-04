@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Tra cứu phường/xã sau sáp nhập</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 0 15px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #222;
+    }
+    .search-box {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      gap: 10px;
+      margin-bottom: 25px;
+      align-items: center;
+    }
+    select, input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      flex: 1;
+    }
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+    .btn-secondary {
+      background: #e9ecef;
+      color: #333;
+    }
+    .results {
+      margin-top: 10px;
+    }
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #007bff;
+    }
+    .card p {
+      margin: 6px 0;
+      color: #444;
+    }
+    mark {
+      background: #fff3cd;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+    .meta {
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tra cứu phường/xã sau sáp nhập</h1>
+
+    <div class="search-box">
+      <select id="province">
+        <option value="">Tất Cả Tỉnh</option>
+      </select>
+      <input type="text" id="q" placeholder="Nhập tên xã/phường...">
+      <button class="btn-primary" onclick="fetchData()">Tìm kiếm</button>
+      <button class="btn-secondary" onclick="resetForm()">Đặt lại</button>
+    </div>
+
+    <div class="meta" id="meta"></div>
+    <div id="results" class="results"></div>
+  </div>
+
+  <script>
+    // 🔹 Lấy danh sách tỉnh từ API CommuneHistoryList
+    async function loadProvinces() {
+      try {
+        const res = await fetch("communeHistory/");
+        const data = await res.json();
+
+        // Lấy tất cả province, loại trùng
+        const provinces = [...new Set(data.map(item => item.province))];
+
+        const select = document.getElementById("province");
+        provinces.forEach(p => {
+          const option = document.createElement("option");
+          option.value = p;
+          option.textContent = p;
+          select.appendChild(option);
+        });
+      } catch (err) {
+        console.error("Không load được danh sách tỉnh:", err);
+      }
+    }
+
+    // 🔹 Hàm tìm kiếm
+    async function fetchData() {
+      const q = document.getElementById("q").value.trim();
+      const province = document.getElementById("province").value.trim();
+
+      let url = "communeHistory/?";
+      if (q) url += `q=${encodeURIComponent(q)}&`;
+      if (province) url += `Province=${encodeURIComponent(province)}&`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      const container = document.getElementById("results");
+      const meta = document.getElementById("meta");
+      container.innerHTML = "";
+      meta.innerHTML = "";
+
+      if (data.length === 0) {
+        container.innerHTML = "<p>Không tìm thấy dữ liệu.</p>";
+        return;
+      }
+
+      meta.innerHTML = `Đang hiển thị <b>1-${data.length}</b> trong tổng số <b>${data.length}</b> kết quả`;
+
+      data.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        // highlight từ khóa
+        const highlight = (text) => {
+          if (!q) return text;
+          const regex = new RegExp(`(${q})`, "gi");
+          return text.replace(regex, "<mark>$1</mark>");
+        };
+
+        div.innerHTML = `
+          <h2>${highlight(item.commune_new)}</h2>
+          <p>${highlight(item.province)}</p>
+          <p><strong>Sáp nhập từ:</strong> ${item.merged_list.map(m => highlight(m)).join(", ")}</p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // 🔹 Reset form
+    function resetForm() {
+      document.getElementById("q").value = "";
+      document.getElementById("province").value = "";
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("meta").innerHTML = "";
+    }
+
+    // 🔹 Bắt sự kiện Enter
+    function bindEnterEvents() {
+      const qInput = document.getElementById("q");
+      const provinceSelect = document.getElementById("province");
+
+      [qInput, provinceSelect].forEach(el => {
+        el.addEventListener("keydown", function(e) {
+          if (e.key === "Enter") {
+            e.preventDefault(); // tránh reload
+            fetchData();
+          }
+        });
+      });
+    }
+
+    // Load danh sách tỉnh khi mở trang
+    window.onload = () => {
+      loadProvinces();
+      bindEnterEvents();
+    };
+  </script>
+</body>
+</html>
+
+
+
+{% comment %} test html {% endcomment %}

@@ -24,25 +24,51 @@ class CommuneHistoryList(APIView):
         if District:
             queryset = queryset.filter(commune_old__district__name__icontains=District)
             
-        serializer = CommuneHistorySerializer(queryset, many=True)        
+        # serializer = CommuneHistorySerializer(queryset, many=True)        
        
        
-        results = []
-        for new_commune in CommuneNew.objects.filter(id__in=queryset.values("commune_new_id").distinct()):
-            merged_from = queryset.filter(commune_new=new_commune).values(
+        data = []
+        if a == CommuneOld:
+            a = queryset.filter
+        for q in CommuneNew.objects.filter(id__in=queryset.values("commune_new_id").distinct()):
+            merged_list = queryset.filter(commune_new=q).values(
                 "commune_old__name",
                 "commune_old__type",
-                "commune_old__district__name"
+                "commune_old__district__name",
+                "commune_old__district__type",
             )
-            results.append({
-                "commune_new": f"{new_commune.type} {new_commune.name}",
-                "province": new_commune.province.name,
-                "merged_from": [
-                    f"{item['commune_old__type']} {item['commune_old__name']} ({item['commune_old__district__name']})"
-                    for item in merged_from
+            data.append({
+                "commune_new": f"{q.type} {q.name}",
+                "province": q.province.name,
+                "merged_list": [
+                    f"{item['commune_old__type']} {item['commune_old__name']} ({item['commune_old__district__type']} {item['commune_old__district__name']})"
+                    for item in merged_list
                 ]
             })
 
-        return Response(results)
+        return Response(data)
+    
+    
+
+        '''
+        # Lấy tất cả commune_new có liên quan và prefetch commune_old
+        commune_news = (CommuneNew.objects.filter(id__in=queryset.values("commune_new_id").distinct()).prefetch_related("communehistory_set__commune_old__district"))
+
+        data = []
+        for new in commune_news:
+            merged_list = [
+                f"{h.commune_old.type} {h.commune_old.name} ({h.commune_old.district.name})"
+                for h in new.communehistory_set.all()
+            ]
+            data.append({
+                "commune_new": f"{new.type} {new.name}",
+                "province": new.province.name,
+                "merged_list": merged_list,
+            })
+
+        return Response(data)
+        '''
             
+def index(request):
+    return render(request, "index.html")
     
